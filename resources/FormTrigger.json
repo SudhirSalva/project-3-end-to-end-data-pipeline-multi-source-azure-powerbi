@@ -1,0 +1,61 @@
+function formTriggerUpload(e) {
+  // 🔐 Secure credentials from Script Properties
+  const props = PropertiesService.getScriptProperties();
+  const connUrl = props.getProperty("DB_URL");
+  const user = props.getProperty("DB_USER");
+  const pwd = props.getProperty("DB_PASSWORD");
+
+  let conn;
+  let stmt;
+
+  try {
+    // 1. Get form data
+    const row = e.values;
+    if (!row) return;
+
+    conn = Jdbc.getConnection(connUrl, user, pwd);
+
+    // 2. SQL Query
+    const sql = `INSERT INTO Transactions (
+      timestamp, transaction_id, transaction_type, merchant_category, amount_inr,
+      transaction_status, sender_age_group, sender_state, sender_bank, receiver_bank,
+      device_type, network_type, fraud_flag, receiver_age_group,
+      hour_of_day, day_of_week, is_weekend
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
+
+    stmt = conn.prepareStatement(sql);
+
+    let ts = new Date(row[0]);
+
+    // 3. Map form fields
+    stmt.setString(1, Utilities.formatDate(ts, "GMT+5:30", "yyyy-MM-dd HH:mm:ss"));
+    stmt.setString(2, row[1]?.toString() || "");
+    stmt.setString(3, row[2] || "");
+    stmt.setString(4, row[3] || "");
+    stmt.setFloat(5, parseFloat(row[4]) || 0);
+    stmt.setString(6, row[5] || "");
+    stmt.setString(7, row[6]?.toString() || "");
+    stmt.setString(8, row[7] || "");
+    stmt.setString(9, row[8] || "");
+    stmt.setString(10, row[9] || "");
+    stmt.setString(11, row[10] || "");
+    stmt.setString(12, row[11] || "");
+    stmt.setInt(13, parseInt(row[12]) || 0);
+
+    // 4. Calculated fields
+    stmt.setString(14, "Not Specified");
+    stmt.setInt(15, ts.getHours());
+    stmt.setString(16, Utilities.formatDate(ts, "GMT+5:30", "EEEE"));
+    stmt.setString(17, (ts.getDay() === 0 || ts.getDay() === 6) ? "Yes" : "No");
+
+    stmt.executeUpdate();
+
+    console.log(`✅ Form Sync Success: ${row[1]}`);
+
+  } catch (err) {
+    console.log("❌ Trigger Error: " + err.message);
+  } finally {
+    if (stmt) stmt.close();
+    if (conn) conn.close();
+  }
+}

@@ -1,0 +1,79 @@
+function upload1000RowsInBatches() {
+  // 🔐 SECURE: Fetch credentials from Script Properties
+  const props = PropertiesService.getScriptProperties();
+  const connUrl = props.getProperty("DB_URL");
+  const user = props.getProperty("DB_USER");
+  const pwd = props.getProperty("DB_PASSWORD");
+
+  let conn;
+  let stmt;
+
+  try {
+    console.log("🔌 Connecting to Azure securely...");
+    conn = Jdbc.getConnection(connUrl, user, pwd);
+    conn.setAutoCommit(false); 
+
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    
+    const totalToUpload = 1000; 
+    const data = sheet.getRange(2, 1, totalToUpload, 13).getValues(); 
+
+    const sql = `INSERT INTO Transactions (
+      timestamp, transaction_id, transaction_type, merchant_category, amount_inr,
+      transaction_status, sender_age_group, sender_state, sender_bank, receiver_bank,
+      device_type, network_type, fraud_flag, receiver_age_group,
+      hour_of_day, day_of_week, is_weekend
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
+
+    stmt = conn.prepareStatement(sql);
+
+    console.log("🚀 Upload started (1000 rows)...");
+
+    for (let i = 0; i < data.length; i++) {
+      let row = data[i];
+      if (!row[1]) continue;
+
+      let ts = new Date(row[0]);
+
+      stmt.setString(1, Utilities.formatDate(ts, "GMT+5:30", "yyyy-MM-dd HH:mm:ss"));
+      stmt.setString(2, row[1].toString());
+      stmt.setString(3, row[2]);
+      stmt.setString(4, row[3]);
+      stmt.setFloat(5, parseFloat(row[4]) || 0);
+      stmt.setString(6, row[5]);
+      stmt.setString(7, row[6].toString());
+      stmt.setString(8, row[7]);
+      stmt.setString(9, row[8]);
+      stmt.setString(10, row[9]);
+      stmt.setString(11, row[10]); 
+      stmt.setString(12, row[11]); 
+      stmt.setInt(13, parseInt(row[12]) || 0);
+
+      // Calculated fields
+      stmt.setString(14, "Not Specified");
+      stmt.setInt(15, ts.getHours());
+      stmt.setString(16, Utilities.formatDate(ts, "GMT+5:30", "EEEE"));
+      stmt.setString(17, (ts.getDay() == 0 || ts.getDay() == 6) ? "Yes" : "No");
+
+      stmt.addBatch();
+
+      if ((i + 1) % 100 === 0) {
+        stmt.executeBatch();
+        conn.commit();
+        console.log(`✅ ${i + 1} rows uploaded`);
+      }
+    }
+
+    stmt.executeBatch();
+    conn.commit();
+
+    console.log("🎉 COMPLETED: 1000 rows uploaded successfully!");
+
+  } catch (e) {
+    console.log("❌ DATABASE ERROR: " + e.message);
+  } finally {
+    if (stmt) stmt.close();
+    if (conn) conn.close();
+    console.log("🔒 Connection closed.");
+  }
+}
