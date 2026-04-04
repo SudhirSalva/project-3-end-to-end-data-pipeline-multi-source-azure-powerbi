@@ -93,6 +93,13 @@ This ensures:
 
 ---
 
+## 📁 Project Resources  
+
+- 📸 Screenshots → [View Folder](./screenshots)  
+- 📂 Resources → [View Folder](./resources)  
+
+---
+
 ## 📈 Key Features  
 
 - Real-time dashboard updates  
