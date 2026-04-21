@@ -1,4 +1,4 @@
-# 📊 Project 3: Dashboard Automation Through Multiple Data Sources  
+# 📊 Project 3: End-to-End Data Pipeline with Multi-Source Integration (Azure + Power BI)  
 
 ---
 
